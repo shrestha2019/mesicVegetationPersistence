@@ -351,8 +351,8 @@ function chartTimeSeries() {
   }
   drawingTools.setShape(null);
   
-  var point = drawingTools.layers().get(0).geometries().get('0');
-  var vecDisplay = ee.Image(0).updateMask(0).paint(point, '000000', 2);
+  var aoi = drawingTools.layers().get(0).geometries().get('0');
+  var vecDisplay = ee.Image(0).updateMask(0).paint(aoi, '000000', 2);
   // Get the drawn geometry; it will define the reduction region.
   // var aoi = drawingTools.layers().get(0).getEeObject();
   var geom = drawingTools.layers().get(0).toGeometry();
@@ -366,9 +366,9 @@ function chartTimeSeries() {
   var mcari = parseFloat(MCARIslider.getValue())
   var mci = parseFloat(VSDIslider.getValue())
   //// Landform to calculate valley bottom////
-  var landforms = ee.Image('CSP/ERGo/1_0/US/landforms').select('constant').clip(geom);
-  var lfmask = landforms.eq(24).or(landforms.eq(34)).or(landforms.eq(41)).or(landforms.eq(42));
-  var valleyBottom = landforms.updateMask(lfmask).reduceToVectors({maxPixels: 1e13, scale: 30, geometryType: 'polygon',});
+  // var landforms = ee.Image('CSP/ERGo/1_0/US/landforms').select('constant').clip(geom);
+  // var lfmask = landforms.eq(24).or(landforms.eq(34)).or(landforms.eq(41)).or(landforms.eq(42));
+  // var valleyBottom = landforms.updateMask(lfmask).reduceToVectors({maxPixels: 1e13, scale: 30, geometryType: 'polygon',});
   
   var datasetPpt = ee.ImageCollection("OREGONSTATE/PRISM/AN81d")
                   .filterDate(startYear+'-'+startMonth, endYear+'-'+endMonth)
@@ -383,10 +383,10 @@ function chartTimeSeries() {
     var mesic_areas = processed.map(function(i, geom) {
       var mesic = ee.Image(1).mask(i.select('mesics_MVsdi'));
       var mesicsArea =mesic.multiply(ee.Image.pixelArea())
-                    .reduceRegion(ee.Reducer.sum(), geom,10,null,null,false,1e13)
+                    .reduceRegion(ee.Reducer.sum(),aoi,10,null,null,false,1e13)
                     .get('constant');
       var geomArea = ee.Image(1).multiply(ee.Image.pixelArea()) 
-                      .reduceRegion(ee.Reducer.sum(), geom,10,null,null,false,1e13)
+                      .reduceRegion(ee.Reducer.sum(),aoi,10,null,null,false,1e13)
                       .get('constant');
       var areaVSDI = ee.Number(mesicsArea).divide(ee.Number(geomArea));
       
@@ -423,10 +423,10 @@ function chartTimeSeries() {
     var mesic_areasLS = processedLS.map(function(i, geom) {
       var mesic = ee.Image(1).mask(i.select('mesics_MVsdi'));
       var mesicsArea =mesic.multiply(ee.Image.pixelArea())
-                    .reduceRegion(ee.Reducer.sum(), geom,10,null,null,false,1e13)
+                    .reduceRegion(ee.Reducer.sum(), aoi,10,null,null,false,1e13)
                     .get('constant');
       var geomArea = ee.Image(1).multiply(ee.Image.pixelArea()) 
-                    .reduceRegion(ee.Reducer.sum(), geom,10,null,null,false,1e13)
+                    .reduceRegion(ee.Reducer.sum(), aoi,10,null,null,false,1e13)
                     .get('constant');
       var areaVSDI = ee.Number(mesicsArea).divide(ee.Number(geomArea));
       var date = ee.Date(i.get('system:time_start'));
