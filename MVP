@@ -340,9 +340,9 @@ function meanPpt(img, aoi){
 Scripts to process images
 */
 
-var process_images = require('users/ns_boise/AppPublish:processMesicDate.js'); 
-var process_LSimages = require('users/ns_boise/AppPublish:processMesicLandsat.js'); 
-var process_util = require('users/ns_boise/AppPublish:Utilities.js'); 
+var process_images = require('users/nawa_shrestha/MesicVegetation:processMesicDate.js'); 
+var process_LSimages = require('users/nawa_shrestha/MesicVegetation:processMesicLandsat.js'); 
+var process_util = require('users/nawa_shrestha/MesicVegetation:Utilities.js'); 
 
 function chartTimeSeries() {
   // Make the chart panel visible the first time a geometry is drawn.
