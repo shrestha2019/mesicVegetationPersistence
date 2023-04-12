@@ -205,11 +205,11 @@ function maskLandform(image){
 }
 
 
-var processS2 = function(startYear, endYear, startMonth, endMonth, geometry, mcari, mci) {
+var processS2 = function(startYear, endYear, startMonth, endMonth, geom, mcari, mci) {
   var s2coll = ee.ImageCollection('COPERNICUS/S2_HARMONIZED')
                   // .filterDate('2017-01-01', '2022-12-31')
                   .filterDate(startYear+'-'+startMonth, endYear+'-'+endMonth)
-                  .filterBounds(geometry)
+                  .filterBounds(geom)
                   .filter(ee.Filter.calendarRange(5,10,'month'))
                   .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',10))
                   // .map(maskS2clouds)
