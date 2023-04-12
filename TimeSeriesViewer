@@ -1,0 +1,89 @@
+
+// map panel
+var map = ui.Map();
+map.style().set({cursor:'crosshair'});
+map.setOptions('HYBRID');
+
+var emptyRast = ee.Image().byte(); // <-- create empty raster for painting
+
+var studyArea = ee.FeatureCollection('users/ns_boise/US_Sagebrush_Biome_2019')
+var paintStudyarea = emptyRast.paint(studyArea, '000000', 1);
+map.addLayer(paintStudyarea, {palette: '000000'},'Sagebrush Biome Area')
+map.centerObject(studyArea,5)
+
+
+// Show point on the map.
+// ======================
+function showPointOnMap(point) {
+  var dot = ui.Map.Layer(point, {color: 'FF0000'});
+  map.layers().set(0, dot);
+}
+
+
+var process_images = require('users/ns_boise/AppPublish:processS2TSviewer.js'); 
+
+var panel = ui.Panel({
+    style: {
+      width: '30%',
+      border: '3px solid #ddd',
+    }
+  });
+var title = ui.Label({
+    value: 'MCI and MCARI Explorer',
+    style: {
+      fontSize: '18px',
+      // fontWeight: '100',
+      padding: '10px',
+      fontWeight: 'bold',
+    }
+  })
+var instructions = ui.Label({
+    value: 'Click on the map to show MCI and MCARI chart.',
+    style: {
+      color: 'gray',
+      padding: '10px',
+    }
+  })
+  
+var chartPanel = ui.Panel();
+
+panel.add(title);
+panel.add(instructions);
+panel.add(chartPanel);
+
+
+// // var map = ui.Map();
+map.onClick(function(coordinates){
+  var point = ee.Geometry.Point([coordinates.lon, coordinates.lat]);
+  var processed = process_images.processS2(point);
+  // print(processed)
+  showPointOnMap(point);
+  var chartMCI = ui.Chart.image.series(processed.select('MCI'), point, ee.Reducer.mean(), 10)
+    chartMCI.setOptions({
+      title: 'MCI Over Time',
+      vAxis: {title: 'MCI'},
+      hAxis: {title: 'date', format: 'MM-yy', gridlines: {count: 7}},
+      lineWidth: 0,
+      pointsVisible: true,
+      pointSize: 2,
+    });
+  var chartMCARI2 = ui.Chart.image.series(processed.select('MCARI2'), point, ee.Reducer.mean(), 10)
+    chartMCARI2.setOptions({
+      title: 'MCARI2 Over Time',
+      vAxis: {title: 'MCARI2'},
+      hAxis: {title: 'date', format: 'MM-yy', gridlines: {count: 7}},
+      lineWidth: 0,
+      pointsVisible: true,
+      pointSize: 2,
+    });
+  chartPanel.clear();
+  chartPanel.add(chartMCI);
+  chartPanel.add(chartMCARI2);
+  
+  
+});
+
+ui.root.clear();
+ui.root.add(panel)
+ui.root.add(map);
+
