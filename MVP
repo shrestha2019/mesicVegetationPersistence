@@ -372,6 +372,7 @@ function chartTimeSeries() {
   
   var datasetPpt = ee.ImageCollection("OREGONSTATE/PRISM/AN81d")
                   .filterDate(startYear+'-'+startMonth, endYear+'-'+endMonth)
+                  .filterBounds(aoi)
                   .select('ppt');
 
   
@@ -394,28 +395,38 @@ function chartTimeSeries() {
       
     })});
     
-    var merged = meanppt.merge(mesic_areas);
+    // var merged = meanppt.merge(mesic_areas);
+    var chartArea = ui.Chart.feature.byFeature(mesic_areas, 'system:time_start', 'areaVSDI')
+              // .setOptions(titleMsf);
+              .setOptions({
+                title: 'Percent Mesic Area',
+                hAxis: {title: 'Date'},
+                vAxis: {title: 'Area %'},
+                lineWidth: 0,
+                pointsVisible: true,
+                pointSize: 2,
+              })
     
-    var chartArea = ui.Chart.feature.byFeature({features: merged, xProperty: 'system:time_start', yProperties: ['meanPpt', 'areaVSDI']})
-            .setSeriesNames(['Precipitation (mm)', 'Mesic Area'])
-            .setChartType('ColumnChart')
-            .setOptions({
-              title: 'Mesic area (%) and Precipitation in Area of Interest (Sentinel-2)',
-              series: {
-                0: {targetAxisIndex: 1, type: 'bar', color: '1d6b99'},
-                1: {targetAxisIndex: 0, type: 'line', lineWidth: 0, pointSize: 2, color: 'e37d05'}},
-              hAxis:
-                  {title: 'Date', titleTextStyle: {italic: false, bold: true}},
-              vAxes: {
-                0: {title: 'Mesic Area (%)', baseline: 0,
-                  titleTextStyle: {italic: false, bold: true, color: 'e37d05'}
-                },
-                1: {
-                  title: 'Precipitation (mm)',
-                  titleTextStyle: {italic: false, bold: true, color: '1d6b99'}},
-              },
-              bar: {groupWidth: '40%'},
-            });
+    // var chartArea = ui.Chart.feature.byFeature({features: merged, xProperty: 'system:time_start', yProperties: ['areaVSDI']})
+    //         .setSeriesNames(['Mesic Area'])
+    //         .setChartType('ColumnChart')
+    //         .setOptions({
+    //           title: 'Mesic area (%) and Precipitation in Area of Interest (Sentinel-2)',
+    //           series: {
+    //             0: {targetAxisIndex: 1, type: 'bar', color: '1d6b99'},
+    //             1: {targetAxisIndex: 0, type: 'line', lineWidth: 0, pointSize: 2, color: 'e37d05'}},
+    //           hAxis:
+    //               {title: 'Date', titleTextStyle: {italic: false, bold: true}},
+    //           vAxes: {
+    //             0: {title: 'Mesic Area (%)', baseline: 0,
+    //               titleTextStyle: {italic: false, bold: true, color: 'e37d05'}
+    //             },
+    //             1: {
+    //               title: 'Precipitation (mm)',
+    //               titleTextStyle: {italic: false, bold: true, color: '1d6b99'}},
+    //           },
+    //           bar: {groupWidth: '40%'},
+    //         });
     
   } if(sensor == 'Landsat') {
     var processedLS = process_LSimages.processL578(startYear, endYear, startMonth, endMonth,point);
