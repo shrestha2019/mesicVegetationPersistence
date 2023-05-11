@@ -99,9 +99,9 @@ function calc_moist_vsdi (collection){
     var moist_VSDI = img.expression(
       '(VSDI - VSDI_p5) /(VSDI_p95-VSDI_p5)', 
       {
-          'VSDI': img.select('VSDI'),
-          'VSDI_p5': per5.select('VSDI_p5'),
-          'VSDI_p95': per95.select('VSDI_p95'),
+          'VSDI': img.select('VSDI_1'),
+          'VSDI_p5': per5.select('VSDI_1_p5'),
+          'VSDI_p95': per95.select('VSDI_1_p95'),
         }).rename('moist_VSDI')
         return img
         .addBands(ee.Image(moist_VSDI))
