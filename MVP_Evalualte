@@ -288,11 +288,15 @@ var dummyGeometry =
 drawingTools.layers().add(dummyGeometry);
 
 
-
-
 function clearGeometry() {
   var layers = drawingTools.layers();
   layers.get(0).geometries().remove(layers.get(0).geometries().get(0));
+}
+
+function drawPoint() {
+  clearGeometry();
+  drawingTools.setShape('point');
+  drawingTools.draw();
 }
 
 function drawRectangle() {
