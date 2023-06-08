@@ -1,0 +1,168 @@
+
+var calc_indices = function(image){
+    var NDVI = image.normalizedDifference(['N', 'R']).float().rename('NDVI')
+  return image
+    .addBands(ee.Image(NDVI))
+    .set('system:time_start', image.get('system:time_start'))
+};
+
+var naip = ee.Image('USDA/NAIP/DOQQ/m_3911257_se_12_060_20211001')
+var naipIndices = calc_indices(naip)
+// Map.addLayer(table, {}, 'MT')
+
+Map.centerObject(naip,14)
+Map.addLayer(naipIndices,{min:0, max:255,bands:['N', 'R', 'G']}, 'NAIP') 
+
+// // // Use these bands for prediction.
+var bands = ['G', 'R', 'N'];
+var fc = mesic.merge(others)
+
+// Overlay the points on the imagery to get training.
+var training = naipIndices.select(bands).sampleRegions({
+  collection: fc,
+  properties: ['class'],
+  scale: 2
+});
+
+// print(training.first())
+// // Make a Random Forest classifier and train it.
+
+var RF_classifier = ee.Classifier.smileRandomForest(50).train({
+  features: training,
+  classProperty: 'class',
+  inputProperties: bands
+});
+
+// var clipped = median.clip(roi)
+
+// // Map.addLayer(clipped, visualization, 'Clipped_Median')
+
+// Classify the input imagery.
+
+var classified = naipIndices.classify(RF_classifier);
+
+//// reduce resolution
+var Projection = naip.projection();
+print('Projection:', Projection);
+
+var naipReduced=classified.resample().reproject({crs:Projection, scale:10})
+var aoi = naipReduced.geometry()
+
+// function accuracyAssess(img){
+//   var masked = img.updateMask(image.neq(0));
+//   // var area = masked.multiply(ee.Image.pixelArea());
+//   // var aoi = img.geometry();
+//   var stats = masked
+//                     .reduceRegion(ee.Reducer.sum(), aoi, 10,null,null,false, 1e13)
+//                     .get('classification');
+//   var sareaSum=ee.Number(stats);
+//   return image.set({'area': sareaSum});
+// }
+
+// var accuracy = accuracyAssess(naipReduced)
+// print(accuracy, 'accuracy')
+
+var classifiedMasked = naipReduced.updateMask(naipReduced.neq(0))
+// var area = classifiedMasked.multiply(ee.Image.pixelArea())
+var ststs = classifiedMasked.reduceRegion({
+  reducer: ee.Reducer.sum(),
+  geometry: aoi,
+  scale: 10,
+  maxPixels: 1e13
+})
+
+print(ststs.get('classification'), 'Xh Reference')
+
+
+
+var RFpalette = ['#E5D813', '#23B862']
+
+////// Mesic VP
+
+var s2project = image.reproject({crs:Projection, scale:10})
+
+var s2Masked = s2project.updateMask(s2project.neq(0))
+// var areas2 = s2Masked.multiply(ee.Image.pixelArea())
+
+var s2ststs = s2Masked.reduceRegion({
+  reducer: ee.Reducer.sum(),
+  geometry: aoi,
+  scale: 10,
+  maxPixels: 1e13
+})
+
+print(s2ststs.get('mesics_MVsdi'), 'Xh Classified')
+
+var yh=classified.multiply(image)
+
+var yhMasked = yh.updateMask(yh.neq(0))
+// var areayh = yhMasked.multiply(ee.Image.pixelArea())
+
+var ststsyh = yhMasked.reduceRegion({
+  reducer: ee.Reducer.sum(),
+  geometry: aoi,
+  scale: 10,
+  maxPixels: 1e13
+})
+
+print(ststsyh.get('classification'), 'yh')
+//User Accuracy 
+var producerA=ee.Number(ststsyh.get('classification')).divide(ee.Number(ststs.get('classification')))
+var userA=ee.Number(ststsyh.get('classification')).divide(ee.Number(s2ststs.get('mesics_MVsdi')))
+
+print(userA, 'user accuracy')
+print(producerA, 'producer accuracy')
+
+
+////// Mesic VP NDVI
+
+var s2projectNDVI = image2.reproject({crs:Projection, scale:10})
+
+var s2MaskedNDVI = s2projectNDVI.updateMask(s2projectNDVI.neq(0))
+// var areas2 = s2Masked.multiply(ee.Image.pixelArea())
+
+var s2ststsNDVI = s2MaskedNDVI.reduceRegion({
+  reducer: ee.Reducer.sum(),
+  geometry: aoi,
+  scale: 10,
+  maxPixels: 1e13
+})
+
+print(s2ststsNDVI.get('mesicsNDVI'), 'Xh NDVI')
+
+var yhNDVI=classified.multiply(image2)
+
+var yhMaskedNDVI = yhNDVI.updateMask(yhNDVI.neq(0))
+// var areayh = yhMasked.multiply(ee.Image.pixelArea())
+
+var ststsyhNDVI = yhMaskedNDVI.reduceRegion({
+  reducer: ee.Reducer.sum(),
+  geometry: aoi,
+  scale: 10,
+  maxPixels: 1e13
+})
+
+print(ststsyhNDVI.get('classification'), 'yh NDVI')
+//User Accuracy 
+var producerANDVI=ee.Number(ststsyhNDVI.get('classification')).divide(ee.Number(ststs.get('classification')))
+var userANDVI=ee.Number(ststsyhNDVI.get('classification')).divide(ee.Number(s2ststsNDVI.get('mesicsNDVI')))
+
+print(userANDVI, 'user accuracy NDVI')
+print(producerANDVI, 'producer accuracy NDVI')
+
+var RFpalette = ['#E5D813', '#23B862']
+
+
+Map.addLayer(classified, {min:0, max:1, palette: RFpalette}, 'classified')
+Map.addLayer(naipReduced, {min:0, max:1, palette: RFpalette}, 'classified10m')
+Map.addLayer(image, {min:0, max:1, palette: ['#E5D813', '#b81a0a']}, 'classifiedSentinel')
+// Map.addLayer(image2, {min:0, max:1, palette: RFpalette}, 'classifiedSentinel1')
+
+
+// //// reduce resolution
+// var S2Projection = image.projection();
+// print('S2Projection:', S2Projection);
+
+// var naipReduced=classified.resample().reproject({crs:S2Projection, scale:10})
+
+// Map.addLayer(naipReduced, {min:0, max:1, palette: RFpalette}, 'naipReduced')
