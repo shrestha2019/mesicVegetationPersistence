@@ -1,6 +1,3 @@
-/**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var s2 = ee.ImageCollection("COPERNICUS/S2_HARMONIZED");
-/***** End of imports. If edited, may not auto-convert in the playground. *****/
 var sageBiome = ee.FeatureCollection('users/ns_boise/US_Sagebrush_Biome_2019')
 var mesicAZ = ee.FeatureCollection('users/ns_boise/mesicAZ')
 var mesicCA = ee.FeatureCollection('users/ns_boise/mesicCA')
