@@ -280,15 +280,15 @@ var mesics_frequency_vsdi = mesics_sum_vsdi.divide(classify.select('mesics_MVsdi
 var mesics_frequency_masked_vsdi = mesics_frequency_vsdi.updateMask(mesics_frequency_vsdi.gt(min_occurence));
 
 var sentinel = sentinel2.median()
-Export.image.toDrive({
-  image: sentinel,
-  description: "sentinel",
-  // assetId: "Classified" + S2classified20170724.getString('system:index').getInfo(),
-  scale: 10,
-  folder: 'MapsPub',
-  maxPixels: 1e13,
-  region: geometry
-});
+// Export.image.toDrive({
+//   image: sentinel,
+//   description: "sentinel",
+//   // assetId: "Classified" + S2classified20170724.getString('system:index').getInfo(),
+//   scale: 10,
+//   folder: 'MapsPub',
+//   maxPixels: 1e13,
+//   region: geometry
+// });
 
 
 /* 
