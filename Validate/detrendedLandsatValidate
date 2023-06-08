@@ -1,3 +1,6 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var poi = /* color: #d63000 */ee.Geometry.Point([-114.41821756499256, 43.19049053324061]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
 
 // Applies scaling factors.
 function applyScaleFactors(image) { 
