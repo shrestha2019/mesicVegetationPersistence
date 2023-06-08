@@ -1,0 +1,770 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var s2 = ee.ImageCollection("COPERNICUS/S2_HARMONIZED");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var sageBiome = ee.FeatureCollection('users/ns_boise/US_Sagebrush_Biome_2019')
+var mesicAZ = ee.FeatureCollection('users/ns_boise/mesicAZ')
+var mesicCA = ee.FeatureCollection('users/ns_boise/mesicCA')
+var mesicCAN = ee.FeatureCollection('users/ns_boise/mesicCAN')
+var mesicCO = ee.FeatureCollection('users/ns_boise/mesicCO')
+var mesicID = ee.FeatureCollection('users/ns_boise/mesicID')
+var mesicMT = ee.FeatureCollection('users/ns_boise/mesicMT')
+var mesicND = ee.FeatureCollection('users/ns_boise/mesicND')
+var mesicNM = ee.FeatureCollection('users/ns_boise/mesicNM')
+var mesicNV = ee.FeatureCollection('users/ns_boise/mesicNV')
+var mesicOR = ee.FeatureCollection('users/ns_boise/mesicOR')
+var mesicSD = ee.FeatureCollection('users/ns_boise/mesicSD')
+var mesicUT = ee.FeatureCollection('users/ns_boise/mesicUT')
+var mesicWA = ee.FeatureCollection('users/ns_boise/mesicWA')
+var mesicWY = ee.FeatureCollection('users/ns_boise/mesicWY')
+
+var merged = mesicAZ.merge(mesicCA).merge(mesicCAN).merge(mesicCO).merge(mesicID).merge(mesicMT).merge(mesicND).merge(mesicNM)
+            .merge(mesicNV).merge(mesicOR).merge(mesicSD).merge(mesicUT).merge(mesicWA).merge(mesicWY)
+
+// Map.addLayer(merged, {}, "merged")
+
+// //--------------------------------------------------------------------------------------------//
+
+
+var emptyRast = ee.Image().byte(); // <-- create empty raster for painting
+var paintStudyarea = emptyRast.paint(sageBiome, '000000', 1);
+// // draw a grid over area away from edges to avoid false "DRY" gridcells
+var grid = sageBiome.geometry().coveringGrid('EPSG:4326', 20000)
+Map.centerObject(grid, 6)
+
+Map.addLayer(paintStudyarea, {color: 'purple'}, "Sage Brush Biome")
+// Map.addLayer(grid, {}, "GRID")
+print(grid.first())
+// // Map.addLayer(lava, {color: 'red'}, "lava flows")
+// // Map.addLayer(nwi, {}, "NWI")
+
+// Try generating a binary raster from the NWI fc and aggregating the area per gridcell - faster
+var wet = 1
+var other = 0
+
+var hdImg = ee.Image(other).clip(grid.geometry())
+
+var wetImg = ee.Image(wet).clipToCollection(merged)
+// print(wetImg)
+var binaryWet = hdImg.where({test: wetImg, value: wetImg})
+// Map.addLayer(binaryWet, {min:0, max:1}, 'Binary')
+
+var gridWet = binaryWet.reduceRegions({
+  collection: grid,
+  reducer: ee.Reducer.sum(),
+  scale: 30 // could lower, but maybe not necessary
+})
+
+var gridWet = gridWet.map(function(f){
+  return f.set('wetProp',ee.Number(f.get('sum')).multiply(900).divide(400000000))
+  
+})
+Map.addLayer(gridWet, {}, 'gridWet')
+
+
+var hist = ui.Chart.feature.histogram({
+  features: gridWet,
+  property: 'wetProp',
+  maxBuckets: 100
+})
+
+print(hist)
+
+// print('summary stats',
+//       gridWet.aggregate_stats('wetProp'));
+// print('summary stats',
+//       gridWet.aggregate_histogram('wetProp'));
+
+var temp = gridWet.aggregate_array('wetProp')
+// print(temp)
+// var list = temp.toDictionary().values();
+var percentiles = temp.reduce(ee.Reducer.percentile([25, 43, 50, 60, 70, 80]));
+
+// .map(function(feat){
+//   var list = feat.toDictionary().values();
+//   var percentiles = list.reduce(ee.Reducer.percentile([20,30,45]));
+//   return ee.Feature(feat.geometry(), percentiles);
+// });
+print(percentiles)
+
+// // var bins = [ 5919, 9327, 16330]
+
+var grid80 = gridWet.filter(ee.Filter.gt('wetProp', 0.15009173441176235))//75 percentile
+print("grid80", grid80.sort('wetProp'))
+
+// var grid80 = gridWet.filter(ee.Filter.gt('wetProp', 0.15009173441176235))
+//   .filter(ee.Filter.lt('wetProp', 0.24430212573528634))
+// print("grid80", grid80.sort('wetProp'))
+
+// var grid70 = gridWet.filter(ee.Filter.gt('wetProp', 0.08404029065743948))
+//   .filter(ee.Filter.lt('wetProp', 0.15009173441176235))
+// print("grid70", grid70.sort('wetProp'))
+
+var grid60 = gridWet.filter(ee.Filter.gt('wetProp', 0.04518928641640883))
+  .filter(ee.Filter.lt('wetProp', 0.15009173441176235))
+print("grid60", grid60.sort('wetProp'))
+
+// var grid50 = gridWet.filter(ee.Filter.gt('wetProp', 0.017464225649794884))
+//   .filter(ee.Filter.lt('wetProp', 0.04518928641640883))
+// print("grid50", grid50.sort('wetProp'))
+
+var grid40 = gridWet.filter(ee.Filter.gt('wetProp', 0.005650102440277418))
+  .filter(ee.Filter.lt('wetProp', 0.04518928641640883))
+print("grid40", grid40.sort('wetProp'))
+
+// var grid20 = gridWet.filter(ee.Filter.gt('wetProp', 0.0002358137925516106))
+//   .filter(ee.Filter.lt('wetProp', 0.005650102440277418))
+// print("grid20", grid20.sort('wetProp'))
+
+var grid00 = gridWet.filter(ee.Filter.lt('wetProp', 0.0002358137925516106))
+print("grid00", grid00.sort('wetProp'))
+// var grid75 = gridWet.filter(ee.Filter.gt('wetProp', 0.11521687830882257))//75 percentile
+// print("Wettest", grid75.sort('wetProp'))
+
+// var grid50 = gridWet.filter(ee.Filter.gt('wetProp', 0.017464225649794884))
+//   .filter(ee.Filter.lt('wetProp', 0.11521687830882257))
+// print("Wet", grid50.sort('wetProp'))
+
+// var grid25 = gridWet.filter(ee.Filter.gt('wetProp', 0.0002358137925516106))
+//   .filter(ee.Filter.lt('wetProp', 0.017464225649794884))
+// print("Dry", grid25.sort('wetProp'))
+
+// var grid00 = gridWet.filter(ee.Filter.lt('wetProp', 0.0002358137925516106))
+// print("Driest", grid00.sort('wetProp'))
+
+// // // Samples - 10 blocks from each stratum - changed the seeds until ZERO blocks were over known lava flow areas
+var wettest = ee.FeatureCollection(grid80.randomColumn('random', 17).sort('random').toList(10))
+// var wet = ee.FeatureCollection(grid50.randomColumn('random', 48).sort('random').toList(10))
+// var dry = ee.FeatureCollection(grid40.randomColumn('random', 92).sort('random').toList(10))
+// var driest = ee.FeatureCollection(grid00.randomColumn('random', 12).sort('random').toList(10))
+// // print(driest)
+
+// // Map.addLayer(wettest, {color: 'cyan'}, "Wettest" )
+// // Map.addLayer(wet, {color: 'green'}, "Wet" )
+// // // Map.addLayer(dry, {color: 'yellow'}, "Dry" )
+// // // Map.addLayer(driest, {color: 'orange'}, "Driest" )
+
+// // Cast the FCs to lists to index 
+var listWettest = wettest.toList(10)
+// print(listWettest, 'listWettest')
+// var listWet = wet.toList(10)
+// var listDry = dry.toList(10)
+// var listDriest = driest.toList(10)
+
+// Map.addLayer(ee.Feature(listWettest.get(9)), {color: 'magenta'}, "WETTEST TEST")
+
+// // Randomly select a NAIP image that intersects each of the sampled blocks 
+var Wettest0 = s2.filterBounds(ee.Feature(listWettest.get(0)).geometry().centroid({'maxError': 1}))
+  .filter(ee.Filter.calendarRange(5, 10, 'month'))
+  .filter(ee.Filter.calendarRange(2017, 2020, 'year'))
+  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',2))
+  .randomColumn().sort('random').first()
+print("Wettest0", Wettest0)
+
+// var Wettest1 = s2.filterBounds(ee.Feature(listWettest.get(1)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',2))
+//   .randomColumn().sort('random').first()
+// print("Wettest1", Wettest1)
+
+// var Wettest2 = s2.filterBounds(ee.Feature(listWettest.get(2)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',2))
+//   .randomColumn().sort('random').first()
+// print("Wettest2", Wettest2)
+
+// var Wettest3 = s2.filterBounds(ee.Feature(listWettest.get(2)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',2))
+//   .randomColumn().sort('random').first()
+// print("Wettest3", Wettest3)
+
+// var Wettest4 = s2.filterBounds(ee.Feature(listWettest.get(2)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',2))
+//   .randomColumn().sort('random').first()
+// print("Wettest4", Wettest4)
+
+// var Wettest5 = s2.filterBounds(ee.Feature(listWettest.get(2)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',20))
+//   .randomColumn().sort('random').first()
+// print("Wettest5", Wettest5)
+
+// var Wettest6 = s2.filterBounds(ee.Feature(listWettest.get(2)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//       .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',2))
+//   .randomColumn().sort('random').first()
+// print("Wettest6", Wettest6)
+
+// var Wettest7 = s2.filterBounds(ee.Feature(listWettest.get(2)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',2))
+//   .randomColumn().sort('random').first()
+// print("Wettest7", Wettest7)
+
+// var Wettest8 = s2.filterBounds(ee.Feature(listWettest.get(2)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',2))
+//   .randomColumn().sort('random').first()
+// print("Wettest8", Wettest8)
+
+// var Wettest9 = s2.filterBounds(ee.Feature(listWettest.get(2)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',2))
+//   .randomColumn().sort('random').first()
+// print("Wettest9", Wettest9)
+
+
+// // //Export to asset
+
+// //Wettest
+  
+// Export.image.toAsset({
+//   image: naipWettest0,
+//   description: "naipWettest0",
+//   assetId: "Ch2/naipWettest/" + naipWettest0.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWettest0.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWettest1,
+//   description: "naipWettest1",
+//   assetId: "Ch2/naipWettest/" + naipWettest1.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWettest1.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWettest2,
+//   description: "naipWettest2",
+//   assetId: "Ch2/naipWettest/"+ naipWettest2.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWettest2.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWettest3,
+//   description: "naipWettest3",
+//   assetId: "Ch2/naipWettest/" + naipWettest3.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWettest3.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWettest4,
+//   description: "naipWettest4",
+//   assetId: "Ch2/naipWettest/" + naipWettest4.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWettest4.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWettest5,
+//   description: "naipWettest5",
+//   assetId: "Ch2/naipWettest/" + naipWettest5.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWettest5.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWettest6,
+//   description: "naipWettest6",
+//   assetId: "Ch2/naipWettest/" + naipWettest6.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWettest6.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWettest7,
+//   description: "naipWettest7",
+//   assetId: "Ch2/naipWettest/" + naipWettest7.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWettest7.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWettest8,
+//   description: "naipWettest8",
+//   assetId: "Ch2/naipWettest/" + naipWettest8.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWettest8.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWettest9,
+//   description: "naipWettest9",
+//   assetId: "Ch2/naipWettest/" + naipWettest9.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWettest9.geometry()
+// });
+
+// //wet
+// // Randomly select a NAIP image that intersects each of the sampled blocks 
+// var naipWet0 = naip.filterBounds(ee.Feature(listWet.get(0)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("NAIP Wet0", naipWet0)
+
+// var naipWet1 = naip.filterBounds(ee.Feature(listWet.get(1)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("NAIP Wet1", naipWet1)
+  
+// var naipWet2 = naip.filterBounds(ee.Feature(listWet.get(2)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("NAIP Wet2", naipWet2)
+  
+// var naipWet3 = naip.filterBounds(ee.Feature(listWet.get(3)).geometry())
+//     .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("NAIP Wet3", naipWet3)
+  
+// var naipWet4 = naip.filterBounds(ee.Feature(listWet.get(4)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("NAIP Wet4", naipWet4)
+
+// var naipWet5 = naip.filterBounds(ee.Feature(listWet.get(5)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("NAIP Wet5", naipWet5)
+  
+// var naipWet6 = naip.filterBounds(ee.Feature(listWet.get(6)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("NAIP Wet6", naipWet6)
+  
+// var naipWet7 = naip.filterBounds(ee.Feature(listWet.get(7)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("NAIP Wet7", naipWet7)
+  
+// var naipWet8 = naip.filterBounds(ee.Feature(listWet.get(8)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("NAIP Wet8", naipWet8)
+  
+// var naipWet9 = naip.filterBounds(ee.Feature(listWet.get(9)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("NAIP Wet9", naipWet9)
+
+// //Export to asset
+  
+// Export.image.toAsset({
+//   image: naipWet0,
+//   description: "naipWet0",
+//   assetId: "Ch2/naipWet/" + naipWet0.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWet0.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWet1,
+//   description: "naipWet1",
+//   assetId: "Ch2/naipWet/" + naipWet1.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWet1.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWet2,
+//   description: "naipWet2",
+//   assetId: "Ch2/naipWet/"+ naipWet2.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWet2.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWet3,
+//   description: "naipWet3",
+//   assetId: "Ch2/naipWet/" + naipWet3.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWet3.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWet4,
+//   description: "naipWet4",
+//   assetId: "Ch2/naipWet/" + naipWet4.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWet4.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWet5,
+//   description: "naipWet5",
+//   assetId: "Ch2/naipWet/" + naipWet5.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWet5.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWet6,
+//   description: "naipWet6",
+//   assetId: "Ch2/naipWet/" + naipWet6.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWet6.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWet7,
+//   description: "naipWet7",
+//   assetId: "Ch2/naipWet/" + naipWet7.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWet7.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWet8,
+//   description: "naipWet8",
+//   assetId: "Ch2/naipWet/" + naipWet8.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWet8.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipWet9,
+//   description: "naipWet9",
+//   assetId: "Ch2/naipWet/" + naipWet9.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipWet9.geometry()
+// }); 
+
+//Dry
+// Randomly select a NAIP image that intersects each of the sampled blocks 
+// var naipDry0 = naip.filterBounds(ee.Feature(listDry.get(0)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("NAIP Dry", naipDry0)
+
+// var naipDry1 = naip.filterBounds(ee.Feature(listDry.get(1)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("naipDry1", naipDry1)
+  
+// var naipDry2 = naip.filterBounds(ee.Feature(listDry.get(2)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("naipDry2", naipDry2)
+
+// var naipDry3 = naip.filterBounds(ee.Feature(listDry.get(3)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("naipDry3", naipDry3)
+
+// var naipDry4 = naip.filterBounds(ee.Feature(listDry.get(4)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("naipDry4", naipDry4)
+
+// var naipDry5 = naip.filterBounds(ee.Feature(listDry.get(5)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("naipDry5", naipDry5)
+
+// var naipDry6 = naip.filterBounds(ee.Feature(listDry.get(6)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("naipDry6", naipDry6)
+
+// var naipDry7 = naip.filterBounds(ee.Feature(listDry.get(7)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("naipDry7", naipDry7)
+
+// var naipDry8 = naip.filterBounds(ee.Feature(listDry.get(8)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("naipDry8", naipDry8)
+// var naipDry9 = naip.filterBounds(ee.Feature(listDry.get(9)).geometry())
+//   .filter(ee.Filter.calendarRange(5, 10, 'month'))
+//   .filter(ee.Filter.calendarRange(2017, 2022, 'year'))
+//   .randomColumn().sort('random').first()
+// print("naipDry9", naipDry9)
+// //Export to asset
+  
+// Export.image.toAsset({
+//   image: naipDry0,
+//   description: "naipDry0",
+//   assetId: "Ch2/naipDry/" + naipDry0.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDry0.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDry1,
+//   description: "naipDry1",
+//   assetId: "Ch2/naipDry/" + naipDry1.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDry1.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDry2,
+//   description: "naipDry2",
+//   assetId: "Ch2/naipDry/"+ naipDry2.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDry2.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDry3,
+//   description: "naipDry3",
+//   assetId: "Ch2/naipDry/" + naipDry3.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDry3.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDry4,
+//   description: "naipDry4",
+//   assetId: "Ch2/naipDry/" + naipDry4.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDry4.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDry5,
+//   description: "naipDry5",
+//   assetId: "Ch2/naipDry/" + naipDry5.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDry5.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDry6,
+//   description: "naipDry6",
+//   assetId: "Ch2/naipDry/" + naipDry6.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDry6.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDry7,
+//   description: "naipDry7",
+//   assetId: "Ch2/naipDry/" + naipDry7.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDry7.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDry8,
+//   description: "naipDry8",
+//   assetId: "Ch2/naipDry/" + naipDry8.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDry8.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDry9,
+//   description: "naipDry9",
+//   assetId: "Ch2/naipDry/" + naipDry9.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDry9.geometry()
+// });
+
+// //Driest
+// // Randomly select a NAIP image that intersects each of the sampled blocks 
+// var naipDriest0 = naip.filterBounds(ee.Feature(listDriest.get(0)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2009, 2020, 'year'))
+//   .randomColumn().sort('random').first()
+// //print("NAIP Driest", naipDriest0)
+
+// var naipDriest1 = naip.filterBounds(ee.Feature(listDriest.get(1)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2009, 2020, 'year'))
+//   .randomColumn().sort('random').first()
+  
+// var naipDriest2 = naip.filterBounds(ee.Feature(listDriest.get(2)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2009, 2020, 'year'))
+//   .randomColumn().sort('random').first()
+  
+// var naipDriest3 = naip.filterBounds(ee.Feature(listDriest.get(3)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2009, 2020, 'year'))
+//   .randomColumn().sort('random').first()
+  
+// var naipDriest4 = naip.filterBounds(ee.Feature(listDriest.get(4)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2009, 2020, 'year'))
+//   .randomColumn().sort('random').first()
+
+// var naipDriest5 = naip.filterBounds(ee.Feature(listDriest.get(5)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2009, 2020, 'year'))
+//   .randomColumn().sort('random').first()
+  
+// var naipDriest6 = naip.filterBounds(ee.Feature(listDriest.get(6)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2009, 2020, 'year'))
+//   .randomColumn().sort('random').first()
+  
+// var naipDriest7 = naip.filterBounds(ee.Feature(listDriest.get(7)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2009, 2020, 'year'))
+//   .randomColumn().sort('random').first()
+  
+// var naipDriest8 = naip.filterBounds(ee.Feature(listDriest.get(8)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2009, 2020, 'year'))
+//   .randomColumn().sort('random').first()
+  
+// var naipDriest9 = naip.filterBounds(ee.Feature(listDriest.get(9)).geometry())
+//   .filter(ee.Filter.calendarRange(6, 9, 'month'))
+//   .filter(ee.Filter.calendarRange(2009, 2020, 'year'))
+//   .randomColumn().sort('random').first()
+
+// //Export to asset
+  
+// Export.image.toAsset({
+//   image: naipDriest0,
+//   description: "naipDriest0",
+//   assetId: "Ch2/naipDriest/" + naipDriest0.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDriest0.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDriest1,
+//   description: "naipDriest1",
+//   assetId: "Ch2/naipDriest/" + naipDriest1.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDriest1.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDriest2,
+//   description: "naipDriest2",
+//   assetId: "Ch2/naipDriest/"+ naipDriest2.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDriest2.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDriest3,
+//   description: "naipDriest3",
+//   assetId: "Ch2/naipDriest/" + naipDriest3.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDriest3.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDriest4,
+//   description: "naipDriest4",
+//   assetId: "Ch2/naipDriest/" + naipDriest4.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDriest4.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDriest5,
+//   description: "naipDriest5",
+//   assetId: "Ch2/naipDriest/" + naipDriest5.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDriest5.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDriest6,
+//   description: "naipDriest6",
+//   assetId: "Ch2/naipDriest/" + naipDriest6.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDriest6.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDriest7,
+//   description: "naipDriest7",
+//   assetId: "Ch2/naipDriest/" + naipDriest7.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDriest7.geometry()
+// });
+ 
+// Export.image.toAsset({
+//   image: naipDriest8,
+//   description: "naipDriest8",
+//   assetId: "Ch2/naipDriest/" + naipDriest8.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDriest8.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: naipDriest9,
+//   description: "naipDriest9",
+//   assetId: "Ch2/naipDriest/" + naipDriest9.getString('system:index').getInfo(),
+//   scale: 1,
+//   maxPixels: 2384757284442,
+//   region: naipDriest9.geometry()
+// });
