@@ -356,6 +356,7 @@ function chartTimeSeries() {
   drawingTools.setShape(null);
   
   var aoi = drawingTools.layers().get(0).geometries().get('0');
+  // var geometries = 
   var vecDisplay = ee.Image(0).updateMask(0).paint(aoi, '000000', 2);
   // Get the drawn geometry; it will define the reduction region.
   // var aoi = drawingTools.layers().get(0).getEeObject();
@@ -383,7 +384,8 @@ function chartTimeSeries() {
   if(sensor == 'Sentinel-2'){
     var processed = process_images.processS2(startYear, endYear, startMonth, endMonth, geom, mcari, mci);
     var frequency = calcFrequency(processed);
-    // var mesic_areas = processed.map(mesicAreas)
+  }
+  if (drawingTools.get()=='rectangle') {
     var meanppt = datasetPpt.map(meanPpt);
     var mesic_areas = processed.map(function(i, geom) {
       var mesic = ee.Image(1).mask(i.select('mesics_MVsdi'));
@@ -397,7 +399,21 @@ function chartTimeSeries() {
       
       return i.set({'areaVSDI': areaVSDI.multiply(100)
       
-    })});
+    })})  // // var mesic_areas = processed.map(mesicAreas)
+    // var meanppt = datasetPpt.map(meanPpt);
+    // var mesic_areas = processed.map(function(i, geom) {
+    //   var mesic = ee.Image(1).mask(i.select('mesics_MVsdi'));
+    //   var mesicsArea =mesic.multiply(ee.Image.pixelArea())
+    //                 .reduceRegion(ee.Reducer.sum(),aoi,10,null,null,false,1e13)
+    //                 .get('constant');
+    //   var geomArea = ee.Image(1).multiply(ee.Image.pixelArea()) 
+    //                   .reduceRegion(ee.Reducer.sum(),aoi,10,null,null,false,1e13)
+    //                   .get('constant');
+    //   var areaVSDI = ee.Number(mesicsArea).divide(ee.Number(geomArea));
+      
+    //   return i.set({'areaVSDI': areaVSDI.multiply(100)
+      
+    // })});
     
     // var merged = meanppt.merge(mesic_areas);
     var chartArea = ui.Chart.feature.byFeature(mesic_areas, 'system:time_start', 'areaVSDI')
@@ -410,27 +426,6 @@ function chartTimeSeries() {
                 pointsVisible: true,
                 pointSize: 2,
               })
-    
-    // var chartArea = ui.Chart.feature.byFeature({features: merged, xProperty: 'system:time_start', yProperties: ['areaVSDI']})
-    //         .setSeriesNames(['Mesic Area'])
-    //         .setChartType('ColumnChart')
-    //         .setOptions({
-    //           title: 'Mesic area (%) and Precipitation in Area of Interest (Sentinel-2)',
-    //           series: {
-    //             0: {targetAxisIndex: 1, type: 'bar', color: '1d6b99'},
-    //             1: {targetAxisIndex: 0, type: 'line', lineWidth: 0, pointSize: 2, color: 'e37d05'}},
-    //           hAxis:
-    //               {title: 'Date', titleTextStyle: {italic: false, bold: true}},
-    //           vAxes: {
-    //             0: {title: 'Mesic Area (%)', baseline: 0,
-    //               titleTextStyle: {italic: false, bold: true, color: 'e37d05'}
-    //             },
-    //             1: {
-    //               title: 'Precipitation (mm)',
-    //               titleTextStyle: {italic: false, bold: true, color: '1d6b99'}},
-    //           },
-    //           bar: {groupWidth: '40%'},
-    //         });
     
   } if(sensor == 'Landsat') {
     var processedLS = process_LSimages.processL578(startYear, endYear, startMonth, endMonth,point);
