@@ -127,7 +127,7 @@ function classify (collection, mcari, mci) {
           ': 0',
           
         {
-          'moist_VSDI': image.select('moist_VSDI'),
+          'moist_VSDI': image.select('MCI'),
           'MCARI2': image.select('MCARI2'),
           'mcari':mcari,
           'mci':mci
