@@ -20,7 +20,7 @@ function showPointOnMap(point) {
 }
 
 
-var process_images = require('users/ns_boise/AppPublish:processS2TSviewer.js'); 
+var process_images = require('users/nawa_shrestha/MesicVegetation:processS2TSviewer.js'); 
 
 var panel = ui.Panel({
     style: {
