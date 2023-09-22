@@ -287,6 +287,7 @@ var dummyGeometry =
     ui.Map.GeometryLayer({geometries: null});
 drawingTools.layers().add(dummyGeometry);
 
+print(dummyGeometry)
 
 function clearGeometry() {
   var layers = drawingTools.layers();
@@ -296,17 +297,20 @@ function clearGeometry() {
 function drawPoint() {
   clearGeometry();
   drawingTools.setShape('point');
+  drawingTools.set('gtype',Point);
   drawingTools.draw();
 }
 
 function drawRectangle() {
   clearGeometry();
   drawingTools.setShape('rectangle');
+  // drawingTools.set('gtype', rec);
   drawingTools.draw();
 }
 
 function drawPolygon() {
   drawingTools.setShape('polygon');
+  // drawingTools.set('gtype',Polygon);
   drawingTools.draw();
   clearGeometry();
 }
@@ -348,19 +352,99 @@ var process_images = require('users/nawa_shrestha/MesicVegetation:processMesicDa
 var process_LSimages = require('users/nawa_shrestha/MesicVegetation:processMesicLandsat.js'); 
 var process_util = require('users/nawa_shrestha/MesicVegetation:Utilities.js'); 
 
+
+// Function to process a Landsat image at a user-drawn point
+function processImageAtPoint(point) {
+  var startYear = startYearslider.getValue();
+  var endYear = endYearslider.getValue();
+  var startMonth = startDayBox.getValue();
+  var endMonth = endDayBox.getValue();
+  var sensor = sensorSelect.getValue();
+  var mcari = parseFloat(MCARIslider.getValue())
+  var mci = parseFloat(VSDIslider.getValue())
+  
+  if(sensor == 'Sentinel-2'){
+    var processed = process_images.processS2(startYear, endYear, startMonth, endMonth, point, mcari, mci);
+    // var processedMVP =processed.select('mesics_MVsdi') 
+    var frequency = calcFrequency(processed);
+  }
+  
+  c.map.layers().reset();
+  c.map.layers().set(0, ui.Map.Layer(frequency, 
+                  {min:5,max:100,palette:['orange','yellow','lightblue','darkblue']},
+                  'Mesic Vegetation Persistence'));
+  
+
+  // Fetch the processed images as a list using the evaluate function
+  // var processedImages = processedMVP.toList(processedMVP.size());
+
+  return processed;
+}
+
+// Function to plot a graph for user-drawn polygons
+function plotGraphForUserPolygon(geometry) {
+  if (geometry instanceof ee.Geometry.Polygon) {
+    selectedPolygon = geometry;
+    selectedPoint = null;
+    var mesic_areas = processed.map(function(i, selectedPolygon) {
+      var mesic = ee.Image(1).mask(i.select('mesics_MVsdi'));
+      var mesicsArea =mesic.multiply(ee.Image.pixelArea())
+                    .reduceRegion(ee.Reducer.sum(),selectedPolygon,10,null,null,false,1e13)
+                    .get('constant');
+      var geomArea = ee.Image(1).multiply(ee.Image.pixelArea()) 
+                      .reduceRegion(ee.Reducer.sum(),selectedPolygon,10,null,null,false,1e13)
+                      .get('constant');
+      var areaVSDI = ee.Number(mesicsArea).divide(ee.Number(geomArea));
+      
+      return i.set({'areaVSDI': areaVSDI.multiply(100)
+        
+      })})
+    
+  }
+  
+
+  // Fetch the processed Landsat images at the user-drawn point
+  var images = processLandsatImageAtPoint(selectedPoint);
+
+  // Create a time series chart for the fetched images within the user-drawn polygon
+  images.evaluate(function(imagesList) {
+    var chartData = ee.List(imagesList).map(function(image, index) {
+      var date = ee.Image(image).date().format('yyyy-MM-dd');
+      var value = ee.Image(image).reduceRegion(ee.Reducer.mean(), polygon, 250).get('nd');
+      return [date, value];
+    });
+
+    chartData = chartData.getInfo();
+
+    var chartOptions = {
+      title: 'Mean NDVI Over Time',
+      hAxis: { title: 'Date' },
+      vAxis: { title: 'Mean NDVI' },
+    };
+
+    chart = ui.Chart.array.values(chartData, 0, 1).setOptions(chartOptions);
+
+    // Update the panel with the new chart
+    panel.widgets().set(0, chart);
+  });
+}
+
+
 function chartTimeSeries() {
   // Make the chart panel visible the first time a geometry is drawn.
   if (!chartPanel.style().get('shown')) {
     chartPanel.style().set('shown', true);
   }
-  drawingTools.setShape(null);
+  // drawingTools.setShape(null);
   
   var aoi = drawingTools.layers().get(0).geometries().get('0');
+  print(aoi,'aoi')
   // var geometries = 
   var vecDisplay = ee.Image(0).updateMask(0).paint(aoi, '000000', 2);
   // Get the drawn geometry; it will define the reduction region.
   // var aoi = drawingTools.layers().get(0).getEeObject();
   var geom = drawingTools.layers().get(0).toGeometry();
+  print(geom,'geom')
   c.map.centerObject(geom, 14);
   
   var startYear = startYearslider.getValue();
@@ -370,17 +454,7 @@ function chartTimeSeries() {
   var sensor = sensorSelect.getValue();
   var mcari = parseFloat(MCARIslider.getValue())
   var mci = parseFloat(VSDIslider.getValue())
-  //// Landform to calculate valley bottom////
-  // var landforms = ee.Image('CSP/ERGo/1_0/US/landforms').select('constant').clip(geom);
-  // var lfmask = landforms.eq(24).or(landforms.eq(34)).or(landforms.eq(41)).or(landforms.eq(42));
-  // var valleyBottom = landforms.updateMask(lfmask).reduceToVectors({maxPixels: 1e13, scale: 30, geometryType: 'polygon',});
-  
-  var datasetPpt = ee.ImageCollection("OREGONSTATE/PRISM/AN81d")
-                  .filterDate(startYear+'-'+startMonth, endYear+'-'+endMonth)
-                  .filterBounds(aoi)
-                  .select('ppt');
 
-  
   if(sensor == 'Sentinel-2'){
     var processed = process_images.processS2(startYear, endYear, startMonth, endMonth, geom, mcari, mci);
     var frequency = calcFrequency(processed);
