@@ -20,26 +20,6 @@ c.controlPanel = ui.Panel();
 // Define the main interactive map.
 c.map = ui.Map();
 
-////Logo
-
-// var logo = ee.Image('users/ns_boise/BoiseStateLogo2wgs')
-// .visualize({
-//     bands:  ['b1', 'b2', 'b3'],
-//     min: 0,
-//     max: 255
-//     });
-// var thumb = ui.Thumbnail({
-//     image: logo,
-//     params: {
-//         dimensions: '1000x500',
-//         format: 'jpeg'
-//         },
-//     style: {height: '150px', width: '350px',padding :'5'}
-//     });
-    
-// var toolPanel = ui.Panel(thumb, 'flow', {width: '400px'});
-
-
 var emptyRast = ee.Image().byte(); // <-- create empty raster for painting
 
 var studyArea = ee.FeatureCollection('users/ns_boise/US_Sagebrush_Biome_2019')
@@ -67,13 +47,39 @@ c.info.contact =   ui.Label('For more infromation, contact the author: nawarajsh
 c.info.panel = ui.Panel([ c.info.titleLabel, c.info.aboutLabel, c.info.guide, c.info.vid,c.info.contact ]);
 // Define drawing tools 
 var symbol = {
+  point: '📍',
   polygon: '🔺',
   rectangle: '⬛',
 
 };
 
+
+c.buttonPoint = ui.Panel({
+  widgets: [
+    ui.Label('Point',{fontWeight: 'bold'}),
+    
+    ui.Button({
+      label: symbol.polygon + ' Point',
+      onClick:processImageAtPoint,
+      style: {stretch: 'horizontal'},
+
+    }),
+
+    //ui.Label('Wait for chart to render.'),
+  ],
+  style: {position: 'bottom-left'},
+  layout: null,
+});
+
+
 c.buttons = ui.Panel({
   widgets: [
+    // ui.Button({
+    //   label: symbol.polygon + ' Point',
+    //   onClick: drawPoint,
+    //   style: {stretch: 'horizontal'}
+    // }),
+    
     ui.Button({
       label: symbol.polygon + ' Polygon',
       onClick: drawPolygon,
@@ -233,7 +239,9 @@ c.controlPanel.add(c.thresholdPanel);
 c.controlPanel.add(c.tsViewerPanel);
 
 c.controlPanel.add(c.featurePanel);
+c.controlPanel.add(c.buttonPoint);
 c.controlPanel.add(c.buttons);
+
 c.controlPanel.add(c.submitButton);
 // c.controlPanel.add(chartPanel);
 c.controlPanel.add(makeLegend('|', '|', '|', "0 %", '50 %', '100%', ['orange','yellow','lightblue','darkblue']));
@@ -297,7 +305,7 @@ function clearGeometry() {
 function drawPoint() {
   clearGeometry();
   drawingTools.setShape('point');
-  drawingTools.set('gtype',Point);
+  // drawingTools.set('gtype',Point);
   drawingTools.draw();
 }
 
@@ -355,15 +363,19 @@ var process_util = require('users/nawa_shrestha/MesicVegetation:Utilities.js');
 
 // Function to process a Landsat image at a user-drawn point
 function processImageAtPoint(point) {
-  var startYear = startYearslider.getValue();
-  var endYear = endYearslider.getValue();
-  var startMonth = startDayBox.getValue();
-  var endMonth = endDayBox.getValue();
-  var sensor = sensorSelect.getValue();
-  var mcari = parseFloat(MCARIslider.getValue())
-  var mci = parseFloat(VSDIslider.getValue())
-  
-  if(sensor == 'Sentinel-2'){
+  drawPoint()
+  var point = drawingTools.layers().get(0).toGeometry()
+  print(point,'point')
+  if (point instanceof ee.Geometry.Point) {
+    // drawPoint()
+    var startYear = startYearslider.getValue();
+    var endYear = endYearslider.getValue();
+    var startMonth = startDayBox.getValue();
+    var endMonth = endDayBox.getValue();
+    var sensor = sensorSelect.getValue();
+    var mcari = parseFloat(MCARIslider.getValue())
+    var mci = parseFloat(VSDIslider.getValue())
+    if(sensor == 'Sentinel-2'){
     var processed = process_images.processS2(startYear, endYear, startMonth, endMonth, point, mcari, mci);
     // var processedMVP =processed.select('mesics_MVsdi') 
     var frequency = calcFrequency(processed);
@@ -373,174 +385,171 @@ function processImageAtPoint(point) {
   c.map.layers().set(0, ui.Map.Layer(frequency, 
                   {min:5,max:100,palette:['orange','yellow','lightblue','darkblue']},
                   'Mesic Vegetation Persistence'));
-  
 
-  // Fetch the processed images as a list using the evaluate function
-  // var processedImages = processedMVP.toList(processedMVP.size());
-
-  return processed;
+  // return processed;
+  }
 }
 
-// Function to plot a graph for user-drawn polygons
-function plotGraphForUserPolygon(geometry) {
-  if (geometry instanceof ee.Geometry.Polygon) {
-    selectedPolygon = geometry;
-    selectedPoint = null;
-    var mesic_areas = processed.map(function(i, selectedPolygon) {
-      var mesic = ee.Image(1).mask(i.select('mesics_MVsdi'));
-      var mesicsArea =mesic.multiply(ee.Image.pixelArea())
-                    .reduceRegion(ee.Reducer.sum(),selectedPolygon,10,null,null,false,1e13)
-                    .get('constant');
-      var geomArea = ee.Image(1).multiply(ee.Image.pixelArea()) 
-                      .reduceRegion(ee.Reducer.sum(),selectedPolygon,10,null,null,false,1e13)
-                      .get('constant');
-      var areaVSDI = ee.Number(mesicsArea).divide(ee.Number(geomArea));
+// // // Function to plot a graph for user-drawn polygons
+// // function plotGraphForUserPolygon(geometry) {
+// //   if (geometry instanceof ee.Geometry.Polygon) {
+// //     selectedPolygon = geometry;
+// //     selectedPoint = null;
+// //     var mesic_areas = processed.map(function(i, selectedPolygon) {
+// //       var mesic = ee.Image(1).mask(i.select('mesics_MVsdi'));
+// //       var mesicsArea =mesic.multiply(ee.Image.pixelArea())
+// //                     .reduceRegion(ee.Reducer.sum(),selectedPolygon,10,null,null,false,1e13)
+// //                     .get('constant');
+// //       var geomArea = ee.Image(1).multiply(ee.Image.pixelArea()) 
+// //                       .reduceRegion(ee.Reducer.sum(),selectedPolygon,10,null,null,false,1e13)
+// //                       .get('constant');
+// //       var areaVSDI = ee.Number(mesicsArea).divide(ee.Number(geomArea));
       
-      return i.set({'areaVSDI': areaVSDI.multiply(100)
+// //       return i.set({'areaVSDI': areaVSDI.multiply(100)
         
-      })})
+// //       })})
     
-  }
+// //   }
   
 
-  // Fetch the processed Landsat images at the user-drawn point
-  var images = processLandsatImageAtPoint(selectedPoint);
+// //   // Fetch the processed Landsat images at the user-drawn point
+// //   var images = processLandsatImageAtPoint(selectedPoint);
 
-  // Create a time series chart for the fetched images within the user-drawn polygon
-  images.evaluate(function(imagesList) {
-    var chartData = ee.List(imagesList).map(function(image, index) {
-      var date = ee.Image(image).date().format('yyyy-MM-dd');
-      var value = ee.Image(image).reduceRegion(ee.Reducer.mean(), polygon, 250).get('nd');
-      return [date, value];
-    });
+// //   // Create a time series chart for the fetched images within the user-drawn polygon
+// //   images.evaluate(function(imagesList) {
+// //     var chartData = ee.List(imagesList).map(function(image, index) {
+// //       var date = ee.Image(image).date().format('yyyy-MM-dd');
+// //       var value = ee.Image(image).reduceRegion(ee.Reducer.mean(), polygon, 250).get('nd');
+// //       return [date, value];
+// //     });
 
-    chartData = chartData.getInfo();
+// //     chartData = chartData.getInfo();
 
-    var chartOptions = {
-      title: 'Mean NDVI Over Time',
-      hAxis: { title: 'Date' },
-      vAxis: { title: 'Mean NDVI' },
-    };
+// //     var chartOptions = {
+// //       title: 'Mean NDVI Over Time',
+// //       hAxis: { title: 'Date' },
+// //       vAxis: { title: 'Mean NDVI' },
+// //     };
 
-    chart = ui.Chart.array.values(chartData, 0, 1).setOptions(chartOptions);
+// //     chart = ui.Chart.array.values(chartData, 0, 1).setOptions(chartOptions);
 
-    // Update the panel with the new chart
-    panel.widgets().set(0, chart);
-  });
-}
+// //     // Update the panel with the new chart
+// //     panel.widgets().set(0, chart);
+// //   });
+// // }
 
 
-function chartTimeSeries() {
-  // Make the chart panel visible the first time a geometry is drawn.
-  if (!chartPanel.style().get('shown')) {
-    chartPanel.style().set('shown', true);
-  }
-  // drawingTools.setShape(null);
+// // function chartTimeSeries() {
+// //   // Make the chart panel visible the first time a geometry is drawn.
+// //   if (!chartPanel.style().get('shown')) {
+// //     chartPanel.style().set('shown', true);
+// //   }
+// //   // drawingTools.setShape(null);
   
-  var aoi = drawingTools.layers().get(0).geometries().get('0');
-  print(aoi,'aoi')
-  // var geometries = 
-  var vecDisplay = ee.Image(0).updateMask(0).paint(aoi, '000000', 2);
-  // Get the drawn geometry; it will define the reduction region.
-  // var aoi = drawingTools.layers().get(0).getEeObject();
-  var geom = drawingTools.layers().get(0).toGeometry();
-  print(geom,'geom')
-  c.map.centerObject(geom, 14);
+// //   var aoi = drawingTools.layers().get(0).geometries().get('0');
+// //   print(aoi,'aoi')
+// //   // var geometries = 
+// //   var vecDisplay = ee.Image(0).updateMask(0).paint(aoi, '000000', 2);
+// //   // Get the drawn geometry; it will define the reduction region.
+// //   // var aoi = drawingTools.layers().get(0).getEeObject();
+// //   var geom = drawingTools.layers().get(0).toGeometry();
+// //   print(geom,'geom')
+// //   c.map.centerObject(geom, 14);
   
-  var startYear = startYearslider.getValue();
-  var endYear = endYearslider.getValue();
-  var startMonth = startDayBox.getValue();
-  var endMonth = endDayBox.getValue();
-  var sensor = sensorSelect.getValue();
-  var mcari = parseFloat(MCARIslider.getValue())
-  var mci = parseFloat(VSDIslider.getValue())
+// //   var startYear = startYearslider.getValue();
+// //   var endYear = endYearslider.getValue();
+// //   var startMonth = startDayBox.getValue();
+// //   var endMonth = endDayBox.getValue();
+// //   var sensor = sensorSelect.getValue();
+// //   var mcari = parseFloat(MCARIslider.getValue())
+// //   var mci = parseFloat(VSDIslider.getValue())
 
-  if(sensor == 'Sentinel-2'){
-    var processed = process_images.processS2(startYear, endYear, startMonth, endMonth, geom, mcari, mci);
-    var frequency = calcFrequency(processed);
-  }
-  if (drawingTools.get()=='rectangle') {
-    var meanppt = datasetPpt.map(meanPpt);
-    var mesic_areas = processed.map(function(i, geom) {
-      var mesic = ee.Image(1).mask(i.select('mesics_MVsdi'));
-      var mesicsArea =mesic.multiply(ee.Image.pixelArea())
-                    .reduceRegion(ee.Reducer.sum(),aoi,10,null,null,false,1e13)
-                    .get('constant');
-      var geomArea = ee.Image(1).multiply(ee.Image.pixelArea()) 
-                      .reduceRegion(ee.Reducer.sum(),aoi,10,null,null,false,1e13)
-                      .get('constant');
-      var areaVSDI = ee.Number(mesicsArea).divide(ee.Number(geomArea));
+// //   if(sensor == 'Sentinel-2'){
+// //     var processed = process_images.processS2(startYear, endYear, startMonth, endMonth, geom, mcari, mci);
+// //     var frequency = calcFrequency(processed);
+// //   }
+// //   if (drawingTools.get()=='rectangle') {
+// //     var meanppt = datasetPpt.map(meanPpt);
+// //     var mesic_areas = processed.map(function(i, geom) {
+// //       var mesic = ee.Image(1).mask(i.select('mesics_MVsdi'));
+// //       var mesicsArea =mesic.multiply(ee.Image.pixelArea())
+// //                     .reduceRegion(ee.Reducer.sum(),aoi,10,null,null,false,1e13)
+// //                     .get('constant');
+// //       var geomArea = ee.Image(1).multiply(ee.Image.pixelArea()) 
+// //                       .reduceRegion(ee.Reducer.sum(),aoi,10,null,null,false,1e13)
+// //                       .get('constant');
+// //       var areaVSDI = ee.Number(mesicsArea).divide(ee.Number(geomArea));
       
-      return i.set({'areaVSDI': areaVSDI.multiply(100)
+// //       return i.set({'areaVSDI': areaVSDI.multiply(100)
       
-    })})  // // var mesic_areas = processed.map(mesicAreas)
-    // var meanppt = datasetPpt.map(meanPpt);
-    // var mesic_areas = processed.map(function(i, geom) {
-    //   var mesic = ee.Image(1).mask(i.select('mesics_MVsdi'));
-    //   var mesicsArea =mesic.multiply(ee.Image.pixelArea())
-    //                 .reduceRegion(ee.Reducer.sum(),aoi,10,null,null,false,1e13)
-    //                 .get('constant');
-    //   var geomArea = ee.Image(1).multiply(ee.Image.pixelArea()) 
-    //                   .reduceRegion(ee.Reducer.sum(),aoi,10,null,null,false,1e13)
-    //                   .get('constant');
-    //   var areaVSDI = ee.Number(mesicsArea).divide(ee.Number(geomArea));
+// //     })})  // // var mesic_areas = processed.map(mesicAreas)
+// //     // var meanppt = datasetPpt.map(meanPpt);
+// //     // var mesic_areas = processed.map(function(i, geom) {
+// //     //   var mesic = ee.Image(1).mask(i.select('mesics_MVsdi'));
+// //     //   var mesicsArea =mesic.multiply(ee.Image.pixelArea())
+// //     //                 .reduceRegion(ee.Reducer.sum(),aoi,10,null,null,false,1e13)
+// //     //                 .get('constant');
+// //     //   var geomArea = ee.Image(1).multiply(ee.Image.pixelArea()) 
+// //     //                   .reduceRegion(ee.Reducer.sum(),aoi,10,null,null,false,1e13)
+// //     //                   .get('constant');
+// //     //   var areaVSDI = ee.Number(mesicsArea).divide(ee.Number(geomArea));
       
-    //   return i.set({'areaVSDI': areaVSDI.multiply(100)
+// //     //   return i.set({'areaVSDI': areaVSDI.multiply(100)
       
-    // })});
+// //     // })});
     
-    // var merged = meanppt.merge(mesic_areas);
-    var chartArea = ui.Chart.feature.byFeature(mesic_areas, 'system:time_start', 'areaVSDI')
-              // .setOptions(titleMsf);
-              .setOptions({
-                title: 'Percent Mesic Area',
-                hAxis: {title: 'Date'},
-                vAxis: {title: 'Area %'},
-                lineWidth: 0,
-                pointsVisible: true,
-                pointSize: 2,
-              })
+// //     // var merged = meanppt.merge(mesic_areas);
+// //     var chartArea = ui.Chart.feature.byFeature(mesic_areas, 'system:time_start', 'areaVSDI')
+// //               // .setOptions(titleMsf);
+// //               .setOptions({
+// //                 title: 'Percent Mesic Area',
+// //                 hAxis: {title: 'Date'},
+// //                 vAxis: {title: 'Area %'},
+// //                 lineWidth: 0,
+// //                 pointsVisible: true,
+// //                 pointSize: 2,
+// //               })
     
-  } if(sensor == 'Landsat') {
-    var processedLS = process_LSimages.processL578(startYear, endYear, startMonth, endMonth,point);
-    var frequency = calcFrequency(processedLS);
-    var mesic_areasLS = processedLS.map(function(i, geom) {
-      var mesic = ee.Image(1).mask(i.select('mesics_MVsdi'));
-      var mesicsArea =mesic.multiply(ee.Image.pixelArea())
-                    .reduceRegion(ee.Reducer.sum(), aoi,10,null,null,false,1e13)
-                    .get('constant');
-      var geomArea = ee.Image(1).multiply(ee.Image.pixelArea()) 
-                    .reduceRegion(ee.Reducer.sum(), aoi,10,null,null,false,1e13)
-                    .get('constant');
-      var areaVSDI = ee.Number(mesicsArea).divide(ee.Number(geomArea));
-      var date = ee.Date(i.get('system:time_start'));
-      return i.set({'areaVSDI': areaVSDI.multiply(100), 'date': date})
+// //   } if(sensor == 'Landsat') {
+// //     var processedLS = process_LSimages.processL578(startYear, endYear, startMonth, endMonth,point);
+// //     var frequency = calcFrequency(processedLS);
+// //     var mesic_areasLS = processedLS.map(function(i, geom) {
+// //       var mesic = ee.Image(1).mask(i.select('mesics_MVsdi'));
+// //       var mesicsArea =mesic.multiply(ee.Image.pixelArea())
+// //                     .reduceRegion(ee.Reducer.sum(), aoi,10,null,null,false,1e13)
+// //                     .get('constant');
+// //       var geomArea = ee.Image(1).multiply(ee.Image.pixelArea()) 
+// //                     .reduceRegion(ee.Reducer.sum(), aoi,10,null,null,false,1e13)
+// //                     .get('constant');
+// //       var areaVSDI = ee.Number(mesicsArea).divide(ee.Number(geomArea));
+// //       var date = ee.Date(i.get('system:time_start'));
+// //       return i.set({'areaVSDI': areaVSDI.multiply(100), 'date': date})
       
-    });
+// //     });
    
-    var chartArea = ui.Chart.feature.byFeature(mesic_areasLS, 'date', 'areaVSDI')
-              // .setOptions(titleMsf);
-              .setOptions({
-                title: 'Percent Mesic Area Landsat (User Drawn)',
-                hAxis: {title: 'Date'},
-                vAxis: {title: 'Area %'},
-                lineWidth: 0,
-                pointsVisible: true,
-                pointSize: 2,
-              })
-  }
+// //     var chartArea = ui.Chart.feature.byFeature(mesic_areasLS, 'date', 'areaVSDI')
+// //               // .setOptions(titleMsf);
+// //               .setOptions({
+// //                 title: 'Percent Mesic Area Landsat (User Drawn)',
+// //                 hAxis: {title: 'Date'},
+// //                 vAxis: {title: 'Area %'},
+// //                 lineWidth: 0,
+// //                 pointsVisible: true,
+// //                 pointSize: 2,
+// //               })
+// //   }
 
-  c.map.layers().reset();
-  c.map.layers().set(0, ui.Map.Layer(frequency, 
-                  {min:5,max:100,palette:['orange','yellow','lightblue','darkblue']},
-                  'Mesic Vegetation Persistence'));
-  c.map.layers().set(1, ui.Map.Layer(vecDisplay, {palette: '000000'},'AOI'));
+//   c.map.layers().reset();
+//   c.map.layers().set(0, ui.Map.Layer(frequency, 
+//                   {min:5,max:100,palette:['orange','yellow','lightblue','darkblue']},
+//                   'Mesic Vegetation Persistence'));
+//   c.map.layers().set(1, ui.Map.Layer(vecDisplay, {palette: '000000'},'AOI'));
   
-  // Replace the existing chart in the chart panel with the new chart.
-  chartPanel.widgets().set(0, chartArea)
-  drawingTools.setShape(null);
-  dummyGeometry.setShown(false)
-}
+//   // Replace the existing chart in the chart panel with the new chart.
+//   chartPanel.widgets().set(0, chartArea)
+//   drawingTools.setShape(null);
+//   dummyGeometry.setShown(false)
+// }
 
 // var selectorlabel = ui.Label('Select NAIP')
 // var selector = ui.Select()
@@ -595,7 +604,7 @@ function chartTimeSeries() {
 
 // }
 // submitButton.onClick(ui.util.debounce(naipImages, 500));
-submitButton.onClick(ui.util.debounce(chartTimeSeries, 500));
+// submitButton.onClick(ui.util.debounce(chartTimeSeries, 500));
 // selectorpanel.onChange(naipImages)
 
 
