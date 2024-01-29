@@ -625,7 +625,7 @@ var viridis = ['#481567FF','#482677FF','#453781FF','#404788FF','#39568CFF',
               '#73D055FF','#95D840FF','#B8DE29FF','#DCE319FF','#FDE725FF' ];
 
 Map.addLayer(mesics_frequency_masked_vsdi,{min:min_occurence,max:100,palette:['orange','yellow','lightblue','darkblue']},'% Moist VSDI MCARI');
-Map.addLayer(mesic_sum_masked, {min:5, max:100, palette: ['ffffff', 'E8EBEC', 'A2D4E4', '6DC9E6','40BEE5','1BB6E7', '0000ff']}, 'mesic_sum_masked')
+Map.addLayer(mesics_sum, {min:5, max:100, palette:['orange','yellow','lightblue','darkblue']}, 'mesics_sum')
 // Export.image.toDrive({
 //   image: mesics_frequency_masked_vsdi,
 //   // description: mesics_frequency_masked_vsdi,
