@@ -1,5 +1,5 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var poi = /* color: #d63000 */ee.Geometry.Point([-114.41821756499256, 43.19049053324061]);
+var poi = /* color: #d63000 */ee.Geometry.Point([-114.11060037749256, 43.198499944275724]);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 
 // Applies scaling factors.
@@ -315,43 +315,65 @@ var classify = Rmoisture.map(function(image) {
 
 print(classify,'classify')
 
-// var naip = ee.Image('USDA/NAIP/DOQQ/m_4610823_sw_12_1_20090623')
+var mean = classify.reduce(ee.Reducer.mean())
+print(mean, 'mean')
+var stdDevs = classify.reduce(ee.Reducer.stdDev())
+print(stdDevs, 'stdDevs')
 
-var naip = ee.ImageCollection("USDA/NAIP/DOQQ")
-            .filterBounds(poi)
-var naip20190722 = ee.Image('USDA/NAIP/DOQQ/m_4610823_sw_12_1_20090623')
-var naipGeometry=naip.first().geometry()
-print(naip, 'naip')
+var CoefVar = classify.map(function(image) {
+    var means = classify.reduce(ee.Reducer.mean())
+    var stdDevs = classify.reduce(ee.Reducer.stdDev())
 
-var classList = classify.toList(classify.size())
-var classified = ee.Image(classList.get(0))
-print(classified, 'classified')
-Map.addLayer(classified, visParams, 'Landsat')
-var Lclassified20190831=classified.select('mesics_MVsdi').clip(naipGeometry)
-var Lclassified20190831NDVI=classified.select('mesicsNDVI').clip(naipGeometry)
+    var CoefVar = image.expression(
+          'stdDev / Means', 
+        {
+          'stdDev': stdDevs.select('mesics_MVsdi_stdDev'),
+          'Means': means.select('mesics_MVsdi_mean'),
+  }).rename('CoefVar')
 
-// Map.addLayer(naip.first(),{min:0, max:255,bands:['N', 'R', 'G']}, 'NAIP')
-Map.addLayer(naip20190722,{min:0, max:255,bands:['N', 'R', 'G']}, 'NAIP')
-
-Map.addLayer(Lclassified20190831, {}, "Classified")
-
-Export.image.toAsset({
-  image: Lclassified20190831,
-  description: "S2classified20190831",
-  assetId: "Clas_" + Lclassified20190831.getString('system:index').getInfo(),
-  scale: 10,
-  maxPixels: 2384757284442,
-  region: Lclassified20190831.geometry()
+  return image
+    .addBands(ee.Image(CoefVar))
 });
 
-Export.image.toAsset({
-  image: Lclassified20190831NDVI,
-  description: "Lclassified20190831NDVI",
-  assetId: "Clas_" + Lclassified20190831NDVI.getString('system:index').getInfo(),
-  scale: 10,
-  maxPixels: 2384757284442,
-  region: Lclassified20190831NDVI.geometry()
-});
+Map.addLayer(CoefVar,{}, 'CoefVar')
+
+// // var naip = ee.Image('USDA/NAIP/DOQQ/m_4610823_sw_12_1_20090623')
+
+// var naip = ee.ImageCollection("USDA/NAIP/DOQQ")
+//             .filterBounds(poi)
+// var naip20190722 = ee.Image('USDA/NAIP/DOQQ/m_4610823_sw_12_1_20090623')
+// var naipGeometry=naip.first().geometry()
+// print(naip, 'naip')
+
+// var classList = classify.toList(classify.size())
+// var classified = ee.Image(classList.get(0))
+// print(classified, 'classified')
+// Map.addLayer(classified, visParams, 'Landsat')
+// var Lclassified20190831=classified.select('mesics_MVsdi').clip(naipGeometry)
+// var Lclassified20190831NDVI=classified.select('mesicsNDVI').clip(naipGeometry)
+
+// // Map.addLayer(naip.first(),{min:0, max:255,bands:['N', 'R', 'G']}, 'NAIP')
+// Map.addLayer(naip20190722,{min:0, max:255,bands:['N', 'R', 'G']}, 'NAIP')
+
+// Map.addLayer(Lclassified20190831, {}, "Classified")
+
+// Export.image.toAsset({
+//   image: Lclassified20190831,
+//   description: "S2classified20190831",
+//   assetId: "Clas_" + Lclassified20190831.getString('system:index').getInfo(),
+//   scale: 10,
+//   maxPixels: 2384757284442,
+//   region: Lclassified20190831.geometry()
+// });
+
+// Export.image.toAsset({
+//   image: Lclassified20190831NDVI,
+//   description: "Lclassified20190831NDVI",
+//   assetId: "Clas_" + Lclassified20190831NDVI.getString('system:index').getInfo(),
+//   scale: 10,
+//   maxPixels: 2384757284442,
+//   region: Lclassified20190831NDVI.geometry()
+// });
 
 
 // // //Use a function to iterate through months and calculate average NDVI
