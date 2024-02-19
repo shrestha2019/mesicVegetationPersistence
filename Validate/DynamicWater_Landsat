@@ -320,84 +320,54 @@ print(mean, 'mean')
 var stdDevs = classify.reduce(ee.Reducer.stdDev())
 print(stdDevs, 'stdDevs')
 
-var CoefVar = classify.map(function(image) {
-    var means = classify.reduce(ee.Reducer.mean())
-    var stdDevs = classify.reduce(ee.Reducer.stdDev())
+var cv = stdDevs.select('mesics_MVsdi_stdDev').divide(mean.select('mesics_MVsdi_mean'))
+print(cv,'cv')
+Map.addLayer(cv,{},'cv')
 
-    var CoefVar = image.expression(
-          'stdDev / Means', 
-        {
-          'stdDev': stdDevs.select('mesics_MVsdi_stdDev'),
-          'Means': means.select('mesics_MVsdi_mean'),
-  }).rename('CoefVar')
+// var CoefVar = image.expression(
+//           'stdDev / Means', 
+//         {
+//           'stdDev': stdDevs.select('mesics_MVsdi_stdDev'),
+//           'Means': means.select('mesics_MVsdi_mean'),
+//   }).rename('CoefVar')
+// print(CoefVar,'CoefVar')
 
-  return image
-    .addBands(ee.Image(CoefVar))
-});
+var per5 = classify.reduce(ee.Reducer.percentile([5]));
+print(per5,'per5')
+var agg=classify.aggregate_mean('mesics_MVsdi')
+print(agg,'agg')
 
-Map.addLayer(CoefVar,{}, 'CoefVar')
+Map.addLayer(per5,{},'per5')
 
-// // var naip = ee.Image('USDA/NAIP/DOQQ/m_4610823_sw_12_1_20090623')
 
-// var naip = ee.ImageCollection("USDA/NAIP/DOQQ")
-//             .filterBounds(poi)
-// var naip20190722 = ee.Image('USDA/NAIP/DOQQ/m_4610823_sw_12_1_20090623')
-// var naipGeometry=naip.first().geometry()
-// print(naip, 'naip')
+var min = classify.reduce(ee.Reducer.min())
+print(min, 'min')
 
-// var classList = classify.toList(classify.size())
-// var classified = ee.Image(classList.get(0))
-// print(classified, 'classified')
-// Map.addLayer(classified, visParams, 'Landsat')
-// var Lclassified20190831=classified.select('mesics_MVsdi').clip(naipGeometry)
-// var Lclassified20190831NDVI=classified.select('mesicsNDVI').clip(naipGeometry)
+Map.addLayer(min,{},'min');
+// var per95 = collection.reduce(ee.Reducer.percentile([95]));
 
-// // Map.addLayer(naip.first(),{min:0, max:255,bands:['N', 'R', 'G']}, 'NAIP')
-// Map.addLayer(naip20190722,{min:0, max:255,bands:['N', 'R', 'G']}, 'NAIP')
 
-// Map.addLayer(Lclassified20190831, {}, "Classified")
 
-// Export.image.toAsset({
-//   image: Lclassified20190831,
-//   description: "S2classified20190831",
-//   assetId: "Clas_" + Lclassified20190831.getString('system:index').getInfo(),
-//   scale: 10,
-//   maxPixels: 2384757284442,
-//   region: Lclassified20190831.geometry()
+// var coefvars=coef(classify)
+// print(coefvars,'coefvars')
+
+// var CoefVar = classify.map(function(image) {
+//     var means = classify.reduce(ee.Reducer.mean())
+//     var stdDevs = classify.reduce(ee.Reducer.stdDev())
+//     var cv = stdDevs.select('mesics_MVsdi_stdDev').divide(means.select('mesics_MVsdi_mean'))
+
+//   //   var CoefVar = image.expression(
+//   //         'stdDev / Means', 
+//   //       {
+//   //         'stdDev': stdDevs.select('mesics_MVsdi_stdDev'),
+//   //         'Means': means.select('mesics_MVsdi_mean'),
+//   // }).rename('CoefVar')
+
+//   return cv
+//     // .addBands(ee.Image(CoefVar))
 // });
 
-// Export.image.toAsset({
-//   image: Lclassified20190831NDVI,
-//   description: "Lclassified20190831NDVI",
-//   assetId: "Clas_" + Lclassified20190831NDVI.getString('system:index').getInfo(),
-//   scale: 10,
-//   maxPixels: 2384757284442,
-//   region: Lclassified20190831NDVI.geometry()
-// });
-
-
-// // //Use a function to iterate through months and calculate average NDVI
-// // var months = ee.List.sequence(5, 10);
-// // // print("months",months);
-// // var years = ee.List.sequence(2017, 2022);
-// // // print("years",years);
-
-
-// // // Map filtering and reducing across year-month combinations and convert to ImageCollection
-// // var yrMo = ee.ImageCollection.fromImages(
-// //   years.map(function (y) {
-// //         return months.map(function (m) {
-// //             return classify
-// //               .filter(ee.Filter.calendarRange(y, y, 'year'))
-// //               .filter(ee.Filter.calendarRange(m, m, 'month'))
-// //               .mean()
-// //               .set('year',y)
-// //               .set('month',m);
-// //               // ee.Date.parse('MMM.', set('month',m));
-              
-// //         });
-// //     }).flatten());
-// // print("yrMo",yrMo);
+// print(CoefVar,'CoefVar')
 
 
 
@@ -416,192 +386,7 @@ var mesics_frequency_masked_vsdi = mesics_frequency_vsdi.updateMask(mesics_frequ
 
 var mesic_sum_masked=mesics_sum.updateMask(mesics_sum)
 
-/* 
-Calculate Mesic area
-*/
 
-// var mesic_area = function(image){
-//     var image1 = ee.Image(1).mask(image.select('mesics_MVsdi'));
-//     var date = ee.Date(image.get('system:time_start')).format('YYYY-MM-DD');
-//     var area_pxa = image1.multiply(ee.Image.pixelArea()) 
-//                     .reduceRegion(ee.Reducer.sum(),
-//                     dickeyArea,10,null,null,false,1e13)
-//                     .get('constant');
-//     var area = ee.Number(area_pxa).divide(1e6);                 
-//     return image.set({'area': area, 'date':date
-//     });
-// };
-
-// var landform = ee.Image('CSP/ERGo/1_0/US/landforms').select('constant');
-// // Restricting landforms to Upper Slope (flat) [24], Lower slope (flat) [34],
-// // Valley bottom [41], and Valley bottom (narrow) [42]
-// var lfmask = landform.clip(studyArea)
-//       .eq(24)
-//       .or(landform.eq(34)).or(landform.eq(41))
-//       .or(landform.eq(42))
-     
-// var vb = landform.clip(studyArea).updateMask(lfmask).reduceToVectors({
-//         maxPixels: 1e13,
-//         scale: 30
-//       })
-      
-// //function to extract % area of a given LC
-// var get_area = function(img){
-//     var mesic = ee.Image(1).mask(img.select('mesics_MVsdi'));
-//     var mesicVSDI = mesic.multiply(ee.Image.pixelArea()) 
-//                     .reduceRegion(ee.Reducer.sum(), vb,10,null,null,false,1e13)
-//                     .get('constant');
-//     var ndvi = ee.Image(1).mask(img.select('mesicsNDVI'));
-//     var mesciNDVI = ndvi.multiply(ee.Image.pixelArea()) 
-//                     .reduceRegion(ee.Reducer.sum(), vb,10,null,null,false,1e13)
-//                     .get('constant');
-//     //var area = ee.Number(area_pxa).divide(1e6);  
-//     var imgArea = ee.Image(1).multiply(ee.Image.pixelArea()) 
-//                     .reduceRegion(ee.Reducer.sum(), vb,10,null,null,false,1e13)
-//                     .get('constant')
-//     var areaVSDI = ee.Number(mesicVSDI).divide(ee.Number(imgArea));
-//     var areaNDVI = ee.Number(mesciNDVI).divide(ee.Number(imgArea));   
-    
-//     return img.set({'areaVSDI': areaVSDI.multiply(100), 
-//                     'areaNDVI': areaNDVI.multiply(100)
-//     });
-// };
-
-// var area_collection = classify.map(get_area)
-
-
-// var datasePpt = ee.ImageCollection("OREGONSTATE/PRISM/AN81d")
-//                   .filter(ee.Filter.date('2017-01-01', '2022-12-30'))
-//                   // .filterBounds(geometry)
-//                   .select('ppt')
-//                   .map(function(img){
-//                     var meanPpt = img.reduceRegion(ee.Reducer.mean(), vb,4000,null,null,false,1e13)
-//                     .get('ppt')
-//                     var date = ee.Date(img.get('system:time_start'));
-//                     return img.set({'meanPpt': meanPpt, 'date': date});
-//                   })
-// print(datasePpt, 'datasePpt')
-
-// var datasePpt = ee.ImageCollection("OREGONSTATE/PRISM/AN81d")
-//                   .filter(ee.Filter.date('2017-01-01', '2022-12-30'))
-//                   .filterBounds(poi)
-//                   .select('ppt')
-
-// //function to extract % area of a given LC
-// var getPpt = function(img){
-//     var meanPpt = img.reduceRegion(ee.Reducer.mean(), vb,4000,null,null,false,1e13)
-//           .get('ppt')
-//     var date = ee.Date(img.get('system:time_start'));
-//                     // .get('constant');
-//     return img.set({'meanPpt': meanPpt, 'date': date
-//     });
-// };
-
-// var ppt = datasePpt.map(getPpt);
-
-// // print(area_collection,'area_collection')
-
-// // print(ppt,'ppt')
-
-// var merged = ppt.merge(area_collection)
-// // print(merged, 'merged')
-
-// /* 
-// select/draw an area to plot graph of Mesic area
-// */
-
-// var title = {
-//   title: 'Percent Mesic Area',
-//   hAxis: {title: 'Date'},
-//   vAxis: {title: 'Area (km2)'},
-//   lineWidth: 0,
-//   pointsVisible: true,
-//   pointSize: 2,
-// };
-
-// print(ui.Chart.feature.byFeature(area_collection, 'system:time_start', 'areaVSDI')
-//                       .setOptions({
-//                         title: '% Mesic Area',
-//                         hAxis: {title: 'Date'},
-//                         vAxis: {title: 'Mesic Area (%)'},
-//                         lineWidth: 0, 
-//                         pointsVisible: true, 
-//                         pointSize: 2}));
-
-// print(ui.Chart.feature.byFeature(area_collection, 'system:time_start', 'areaNDVI')
-//                       .setOptions({
-//                         title: '% Mesic Area NDVI',
-//                         hAxis: {title: 'Date'},
-//                         vAxis: {title: 'Mesic Area (%)'},
-//                         lineWidth: 0, 
-//                         pointsVisible: true, 
-//                         pointSize: 2}));
-                        
-// // print(ui.Chart.image.seriesByRegion({
-// //                               imageCollection: yrMo.select('mesics_MVsdi'),
-// //                               regions: vb,
-// //                               reducer: ee.Reducer.mean(),
-// //                               scale: 30,
-// //                               xProperty: 'month',
-// //                               seriesProperty: 'mesics_MVsdi'
-// //                             }).setOptions({
-// //                               title: 'change of Mesic Area NDVI',
-// //                               hAxis: {title: 'Date'}, 
-// //                               vAxis: {title: 'Area (%)'},
-// //                               lineWidth: 1, 
-// //                               pointsVisible: true, 
-// //                               pointSize: 2}));
-// // print(ui.Chart.feature.byFeature(ppt, 'date','meanPpt')
-// //                       .setChartType('ColumnChart')
-// //                       .setOptions({
-// //                         title: 'Ppt of Mesic Area',
-// //                         hAxis: {title: 'Date'},
-// //                         vAxis: {title: 'Area (%)'},
-// //                         lineWidth: 0, 
-// //                         pointsVisible: true, 
-// //                         pointSize: 2}));
-// // Define the chart and print it to the console.
-// var chart =
-//     ui.Chart.feature
-//         .byFeature({
-//           features: merged,
-//           xProperty: 'system:time_start',
-//           yProperties: ['meanPpt', 'areaVSDI']
-//         })
-//         .setSeriesNames(['Precipitation', 'Mesic Area'])
-//         .setChartType('ColumnChart')
-//         .setOptions({
-//           // title: 'Mesic area (%) and Precipitation (mm) )',
-//           series: {
-//             0: {targetAxisIndex: 1, type: 'bar', color: '1d6b99'},
-//             1: {
-//               targetAxisIndex: 0,
-//               type: 'line',
-//               lineWidth: 0,
-//               pointSize: 2,
-//               color: 'e37d05'
-//             }
-//           },
-//           hAxis:
-//               {title: 'Date', titleTextStyle: {italic: false, bold: true}},
-//           vAxes: {
-//             0: {
-//               title: 'Mesic Area (%)',
-//               baseline: 0,
-//               titleTextStyle: {italic: false, bold: true, color: 'e37d05'}
-//             },
-//             1: {
-//               title: 'Precipitation (mm)',
-//               titleTextStyle: {italic: false, bold: true, color: '1d6b99'}
-//             },
-//           },
-//           bar: {groupWidth: '40%'},
-//         });
-// print(chart);
-// //Add color bar
-// //base code adapted from: 
-// //https://gis.stackexchange.com/questions/290713/adding-map-key-to-map-or-console-in-google-earth-engine
-// //https://code.earthengine.google.com/9f890c110e98fa3391480543009c8028
 
 function ColorBar(palette) {
   return ui.Thumbnail({
@@ -648,22 +433,4 @@ var viridis = ['#481567FF','#482677FF','#453781FF','#404788FF','#39568CFF',
 
 Map.addLayer(mesics_frequency_masked_vsdi,{min:min_occurence,max:100,palette:['orange','yellow','lightblue','darkblue']},'% Moist VSDI MCARI');
 Map.addLayer(mesics_sum, {min:5, max:100, palette:['orange','yellow','lightblue','darkblue']}, 'mesics_sum')
-// Export.image.toDrive({
-//   image: mesics_frequency_masked_vsdi,
-//   // description: mesics_frequency_masked_vsdi,
-//   folder:'gee',
-//   scale: 10,
-//   maxPixels: 1e13,
-//   region: region
-//   })
-
-
-// // Display the county boundaries.
-// var boundary = ee.Image().byte().paint({
-//   featureCollection: EllisMay,
-//   color: 1,
-//   width: 2
-// });
-// Map.addLayer(boundary, {palette: ['000000','d23513']}, 'baughCreek');
-
-// Map.addLayer(baughCreek,{}, 'baughCreek')
+Map.addLayer(CoefVar,{}, 'CoefVar')
