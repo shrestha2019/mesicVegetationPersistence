@@ -13,7 +13,7 @@ var m = {};
 
 // Define a JSON object for storing UI components.
 var c = {};
-
+ 
 // Define a control panel for user input.
 c.controlPanel = ui.Panel();
 
