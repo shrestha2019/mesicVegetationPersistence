@@ -212,6 +212,8 @@ var submitButton = ui.Button({label: '7. Submit'});
 c.submitButton = ui.Panel([submitButton], null, {stretch: 'horizontal'});
 // c.chartPanel = ui.Panel({style: {position: 'bottom-right'}})
 
+// chart panel
+
 var chartPanel = ui.Panel({
   style:
       {height: '235px', width: '600px', position: 'bottom-right', shown: false}
