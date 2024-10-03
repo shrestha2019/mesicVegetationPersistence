@@ -191,7 +191,7 @@ c.thresholdPanel = ui.Panel(
   ] 
 );
 
-// Sensor dropdown
+// timeSeries dropdown
 var timeSeriesLabel = ui.Label('Use time series viewer to find the appropriate threshold values',{fontWeight: 'bold'});
 
 // var sensorSelect = ui.Select({items:sensorList, value:'Sentinel-2', style:{stretch: 'horizontal'}});
