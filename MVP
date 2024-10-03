@@ -388,6 +388,10 @@ var process_images = require('users/nawa_shrestha/MesicVegetation:processMesicDa
 var process_LSimages = require('users/nawa_shrestha/MesicVegetation:processMesicLandsat.js'); 
 var process_util = require('users/nawa_shrestha/MesicVegetation:Utilities.js'); 
 
+/* 
+function to process and chart timeseries  
+*/
+
 function chartTimeSeries() {
   // Make the chart panel visible the first time a geometry is drawn.
 
