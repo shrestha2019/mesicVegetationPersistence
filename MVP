@@ -377,7 +377,7 @@ function meanPpt(img, aoi){
     
 // }
 /* 
-Scripts to process images
+call scripts to process images
 */
 
 // var process_images = require('users/ns_boise/AppPublish:processMesicDate.js'); 
