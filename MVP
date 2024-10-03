@@ -343,6 +343,9 @@ function drawPolygon() {
   clearGeometry();
 }
 
+/* 
+function to calculate mesic frequency  
+*/
 function calcFrequency(collection){
   var min_occurence = 5;
   var mesics_sum_vsdi = collection.select('mesics_MVsdi').reduce(ee.Reducer.sum());
