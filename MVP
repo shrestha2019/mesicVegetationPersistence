@@ -394,15 +394,13 @@ function to process and chart timeseries
 
 function chartTimeSeries() {
   // Make the chart panel visible the first time a geometry is drawn.
-
-  
   if (!chartPanel.style().get('shown')) {
     chartPanel.style().set('shown', true);
   }
   drawingTools.setShape(null);
   
   var point = drawingTools.layers().get(0).geometries().get('0');
-  var vecDisplay = ee.Image(0).updateMask(0).paint(point, '000000', 2);
+  var vecDisplay = ee.Image(0).updateMask(0).paint(point, '000000', 2);//makes transparent geometry
   // Get the drawn geometry; it will define the reduction region.
   var aoi = drawingTools.layers().get(0).getEeObject();
   var geom = drawingTools.layers().get(0).toGeometry();
@@ -602,11 +600,8 @@ var naipImages = function(){
       // selectorpanel.clear()
       c.map.remove(selectorpanel)
       c.map.add(selectorpanel);
-  
-  
-  }
-  
 
+  }
 
 }
 submitButton.onClick(ui.util.debounce(naipImages, 500));
