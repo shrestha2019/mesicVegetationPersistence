@@ -326,9 +326,6 @@ var dummyGeometry =
     ui.Map.GeometryLayer({geometries: null});
 drawingTools.layers().add(dummyGeometry);
 
-
-
-
 function clearGeometry() {
   var layers = drawingTools.layers();
   layers.get(0).geometries().remove(layers.get(0).geometries().get(0));
@@ -345,8 +342,6 @@ function drawPolygon() {
   drawingTools.draw();
   clearGeometry();
 }
-
-
 
 function calcFrequency(collection){
   var min_occurence = 5;
